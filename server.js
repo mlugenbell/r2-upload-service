@@ -46,7 +46,7 @@ app.post('/upload-audio', upload.single('audio'), async (req, res) => {
       ContentType: req.file.mimetype,
     }));
 
-    const publicUrl = `https://pub-b32c6302f8a644d7823ee39cfad0ea60.r2.dev/${fileName}`;
+    const publicUrl = `https://pub-82d37aadf5584663b80fc64f54a49180.r2.dev/${fileName}`;
 
     res.json({
       success: true,
