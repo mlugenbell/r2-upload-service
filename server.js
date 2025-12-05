@@ -66,3 +66,116 @@ app.post('/upload-audio', upload.single('audio'), async (req, res) => {
 
     // Read the file
     const fileContent = await fs.readFile(req.file.path);
+    
+    // Generate R2 key
+    const fileKey = `audio/${Date.now()}-${Math.random().toString(36).substring(7)}${path.extname(req.file.originalname)}`;
+    
+    console.log('Uploading to R2 as:', fileKey);
+
+    // Upload to R2
+    await s3Client.send(new PutObjectCommand({
+      Bucket: process.env.R2_BUCKET_NAME,
+      Key: fileKey,
+      Body: fileContent,
+      ContentType: req.file.mimetype || 'audio/mpeg',
+    }));
+
+    // Clean up temp file
+    await fs.unlink(req.file.path);
+
+    // Construct public URL
+    const publicUrl = `https://pub-82d37aadf5584663b80fc64f54a49180.r2.dev/${fileKey}`;
+
+    console.log('Upload successful. URL:', publicUrl);
+
+    res.json({
+      success: true,
+      url: publicUrl,
+      audio_url: publicUrl,
+      filename: fileKey,
+      size: req.file.size,
+      duration: duration
+    });
+
+  } catch (error) {
+    console.error('Upload error:', error);
+    
+    // Clean up temp file if it exists
+    if (req.file?.path) {
+      try {
+        await fs.unlink(req.file.path);
+      } catch (unlinkError) {
+        console.error('Error cleaning up temp file:', unlinkError);
+      }
+    }
+    
+    res.status(500).json({ 
+      error: 'Upload failed', 
+      details: error.message 
+    });
+  }
+});
+
+// Video upload endpoint
+app.post('/upload-video', upload.single('video'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No video file uploaded' });
+    }
+
+    console.log('Video upload request received');
+    console.log('File received:', req.file.filename);
+
+    // Read the file
+    const fileContent = await fs.readFile(req.file.path);
+    
+    // Generate R2 key
+    const fileKey = `video/${Date.now()}-${Math.random().toString(36).substring(7)}${path.extname(req.file.originalname)}`;
+    
+    console.log('Uploading to R2 as:', fileKey);
+
+    // Upload to R2
+    await s3Client.send(new PutObjectCommand({
+      Bucket: process.env.R2_BUCKET_NAME,
+      Key: fileKey,
+      Body: fileContent,
+      ContentType: req.file.mimetype || 'video/mp4',
+    }));
+
+    // Clean up temp file
+    await fs.unlink(req.file.path);
+
+    // Construct public URL
+    const publicUrl = `https://pub-82d37aadf5584663b80fc64f54a49180.r2.dev/${fileKey}`;
+
+    console.log('Upload successful. URL:', publicUrl);
+
+    res.json({
+      success: true,
+      url: publicUrl,
+      filename: fileKey,
+      size: req.file.size
+    });
+
+  } catch (error) {
+    console.error('Upload error:', error);
+    
+    // Clean up temp file if it exists
+    if (req.file?.path) {
+      try {
+        await fs.unlink(req.file.path);
+      } catch (unlinkError) {
+        console.error('Error cleaning up temp file:', unlinkError);
+      }
+    }
+    
+    res.status(500).json({ 
+      error: 'Upload failed', 
+      details: error.message 
+    });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`R2 upload service running on port ${PORT}`);
+});
